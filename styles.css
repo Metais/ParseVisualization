@@ -1,0 +1,63 @@
+/* Styles for the page layout */
+#container {
+    display: flex;
+    justify-content: space-between;
+    align-items: flex-start; /* Align items at the start */
+    padding: 20px;
+}
+
+#plot-area {
+    flex: 3; /* Adjust as needed */
+    margin-right: 20px;
+}
+
+#data-area {
+    flex: 2; /* Increased flex to make it wider */
+    max-width: 600px; /* Increased max-width for more space */
+}
+
+#cluster-select {
+    width: 100%;
+    margin-bottom: 10px;
+    padding: 8px;
+    border: 1px solid #ddd;
+    border-radius: 4px;
+    font-size: 16px;
+}
+
+#table-container {
+    max-height: 600px; /* Adjust to fit within page */
+    overflow-y: auto;
+    border: 1px solid #ddd;
+    border-radius: 4px;
+    box-shadow: 0 4px 8px rgba(0, 0, 0, 0.1);
+}
+
+#gene-table {
+    width: 100%; /* Ensures table uses the full width of its container */
+    border-collapse: collapse;
+    font-family: Arial, sans-serif;
+}
+
+#gene-table th, #gene-table td {
+    border: 1px solid #ddd;
+    padding: 12px;
+    text-align: left;
+}
+
+#gene-table th {
+    background-color: #f4f4f4;
+    font-weight: bold;
+}
+
+#gene-table tr:nth-child(even) {
+    background-color: #f9f9f9;
+}
+
+#gene-table tr:hover {
+    background-color: #f1f1f1;
+}
+
+#gene-table td {
+    font-size: 14px;
+}

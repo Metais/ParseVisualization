@@ -3,14 +3,38 @@
 <head>
     <meta charset="UTF-8">
     <meta name="viewport" content="width=device-width, initial-scale=1.0">
-    <title>UMAP Cluster Visualization</title>
-    <link rel="stylesheet" href="style.css">
-    <!-- Load Plotly.js library -->
-    <script src="https://cdn.plot.ly/plotly-latest.min.js"></script>
+    <title>Parse PBMCs Experiment: Sample 1</title>
+    <link rel="stylesheet" href="styles.css">
 </head>
 <body>
-    <h1>UMAP Cluster Visualization</h1>
-    <div id="umap-plot"></div>
+    <div id="container">
+        <div id="plot-area">
+            <div id="umap-plot"></div>
+        </div>
+        <div id="data-area">
+            <select id="cluster-select">
+                <option value="">Select Cluster</option>
+            </select>
+            <div id="table-container">
+                <table id="gene-table">
+                    <thead>
+                        <tr>
+                            <th>Gene Name</th>
+                            <th>Score</th>
+                            <th>Log2 FC</th>
+                            <th>Pct1</th>
+                            <th>Pct2</th>
+                            <th>Adjusted P-Value</th>
+                        </tr>
+                    </thead>
+                    <tbody>
+                        <!-- Rows will be populated by JavaScript -->
+                    </tbody>
+                </table>
+            </div>
+        </div>
+    </div>
+    <script src="https://cdn.plot.ly/plotly-latest.min.js"></script>
     <script src="app.js"></script>
 </body>
 </html>
