@@ -6,6 +6,14 @@
     padding: 20px;
 }
 
+h3 {
+    font-size: 1.5em; /* Adjust size as needed */
+    color: #333;      /* Change color */
+    text-align: center; /* Center the title */
+    margin-top: 20px; /* Add spacing from top */
+    font-family: Arial, sans-serif;
+}
+
 #plot-area {
     flex: 3; /* Adjust as needed */
     margin-right: 20px;
