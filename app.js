@@ -71,6 +71,42 @@ fetch('data/umap_cluster.json')
 
         // Plot all traces
         Plotly.newPlot('umap-plot', traces, layout);
+
+        // Fetch the cell_gene_expression.json file
+        fetch('data/cell_gene_expression.json')
+            .then(response => response.json())
+            .then(cellGeneData => {
+                // Function to handle cell ID input
+                document.getElementById('cell-id-input').addEventListener('change', function() {
+                    const cellId = this.value;
+                    const genes = cellGeneData[cellId];
+                    const clusterInfo = data[cellId];
+
+                    // Clear previous table rows
+                    const tbody = document.querySelector('#cell-table tbody');
+                    tbody.innerHTML = '';
+
+                    // Display cluster information
+                    const clusterDisplay = document.getElementById('cell-cluster-info');
+                    if (clusterInfo) {
+                        clusterDisplay.innerText = `Cluster: ${clusterInfo.Cluster}`;
+                    } else {
+                        clusterDisplay.innerText = 'Cluster: Not found';
+                    }
+
+                    // Populate gene expression table if the cell is found
+                    if (genes) {
+                        genes.forEach(([geneName, score]) => {
+                            const row = tbody.insertRow();
+                            row.insertCell(0).innerText = geneName;
+                            row.insertCell(1).innerText = (score / 100).toFixed(2) + '%'; // Convert to percentage
+                        });
+                    } else {
+                        // alert('Cell ID not found.');
+                    }
+                });
+            })
+            .catch(handleError);  // Handle error for umap_cluster fetch
     })
     .catch(handleError);
 
@@ -104,32 +140,6 @@ fetch('data/top_100_genes_per_cluster_sample_1.json')
                     `;
                     tableBody.appendChild(row);
                 });
-            }
-        });
-    })
-    .catch(handleError);
-
-// Fetch the cell_gene_expression.json file
-fetch('data/cell_gene_expression.json')
-    .then(response => response.json())
-    .then(data => {
-        // Function to handle cell ID input
-        document.getElementById('cell-id-input').addEventListener('change', function() {
-            const cellId = this.value;
-            const genes = data[cellId];
-
-            // Clear previous table rows
-            const tbody = document.querySelector('#cell-table tbody');
-            tbody.innerHTML = '';
-
-            if (genes) {
-                genes.forEach(([geneName, score]) => {
-                    const row = tbody.insertRow();
-                    row.insertCell(0).innerText = geneName;
-                    row.insertCell(1).innerText = (score / 100).toFixed(2) + '%'; // Convert to percentage
-                });
-            } else {
-                //alert('Cell ID not found.');
             }
         });
     })
