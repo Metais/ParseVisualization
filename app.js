@@ -1,51 +1,26 @@
-// Helper function to downsample data points by a factor of 10
-function downsampleData(cluster, umapX, umapY, sampleFactor = 10, minThreshold = 10) {
-    const indices = [];
-    const clusterPoints = cluster.map((c, i) => ({ cluster: c, index: i }));
-
-    // Separate by clusters
-    const groupedByCluster = clusterPoints.reduce((acc, point) => {
-        acc[point.cluster] = acc[point.cluster] || [];
-        acc[point.cluster].push(point.index);
-        return acc;
-    }, {});
-
-    const downsampled = [];
-
-    Object.keys(groupedByCluster).forEach(clusterKey => {
-        const points = groupedByCluster[clusterKey];
-        const clusterSize = points.length;
-
-        if (clusterSize > minThreshold) {
-            // Reduce by a factor of 10
-            for (let i = 0; i < clusterSize; i += sampleFactor) {
-                downsampled.push(points[i]);
-            }
-        } else {
-            // Keep all points if below the threshold
-            downsampled.push(...points);
-        }
-    });
-
-    return downsampled;
-}
+const handleError = (error) => console.error('Error:', error);
 
 // Load UMAP data and visualize the plot
-fetch('data/umap_cluster_data.json')
+fetch('data/umap_cluster.json')
     .then(response => response.json())
     .then(data => {
-        let umapX = data.map(d => d.UMAP1);
-        let umapY = data.map(d => d.UMAP2);
-        let clusters = data.map(d => d.Cluster);
+        let umapX = [];
+        let umapY = [];
+        let clusters = [];
+        let cellId = [];
 
-        // Downsample data by a factor of 10, unless a cluster has fewer than 10 points
-        const sampledIndices = downsampleData(clusters, umapX, umapY);
-        umapX = sampledIndices.map(i => umapX[i]);
-        umapY = sampledIndices.map(i => umapY[i]);
-        clusters = sampledIndices.map(i => clusters[i]);
+        // Iterate over the keys (Cell_IDs) in the data
+        for (const cell in data) {
+            if (data.hasOwnProperty(cell)) {
+                umapX.push(data[cell].UMAP1);
+                umapY.push(data[cell].UMAP2);
+                clusters.push(data[cell].Cluster);
+                cellId.push(cell); // Using the key as Cell_ID
+            }
+        }
 
         // Create a unique set of cluster labels for coloring
-        const uniqueClusters = [...new Set(clusters)];
+        const uniqueClusters = [...new Set(clusters)].sort((a, b) => a - b);
 
         // Create a color map for the clusters (discrete colors)
         const colorMap = {};
@@ -55,16 +30,18 @@ fetch('data/umap_cluster_data.json')
 
         // Prepare traces for each cluster (to show in the legend)
         const traces = uniqueClusters.map(cluster => {
-            const clusterIndices = clusters.map((c, i) => (c === cluster ? i : -1)).filter(i => i >= 0);
-
-            // Only generate hover text for points in this trace
-            const traceX = clusterIndices.map(i => umapX[i]);
-            const traceY = clusterIndices.map(i => umapY[i]);
-            const traceText = clusterIndices.map(i => `Cluster: ${clusters[i]}`);
-
+            const traceData = clusters.reduce((acc, c, i) => {
+                if (c === cluster) {
+                    acc.x.push(umapX[i]);
+                    acc.y.push(umapY[i]);
+                    acc.text.push(`Cluster: ${clusters[i]}\nCell Id: ${cellId[i]}`);
+                }
+                return acc;
+            }, { x: [], y: [], text: [] });
+        
             return {
-                x: traceX,
-                y: traceY,
+                x: traceData.x,
+                y: traceData.y,
                 mode: 'markers',
                 marker: {
                     color: colorMap[cluster],
@@ -74,8 +51,8 @@ fetch('data/umap_cluster_data.json')
                         color: '#000'
                     }
                 },
-                name: `Cluster ${cluster}`,  // Cluster name in the legend
-                text: traceText,
+                name: `Cluster ${cluster}`,
+                text: traceData.text,
                 hovertemplate: '%{text}<extra></extra>',
                 hoverinfo: 'text'
             };
@@ -94,61 +71,117 @@ fetch('data/umap_cluster_data.json')
 
         // Plot all traces
         Plotly.newPlot('umap-plot', traces, layout);
+    })
+    .catch(handleError);
 
-        // Add hover event listener for debugging
-        const plot = document.getElementById('umap-plot');
-        plot.on('plotly_hover', function(eventData) {
-            if (eventData.points.length > 0) {
-                const point = eventData.points[0];
-                console.log('Hovered over:', {
-                    x: point.x,
-                    y: point.y,
-                    cluster: point.data.name,
-                    pointIndex: point.pointIndex,
-                    text: point.text
+// Load gene data and populate the drop-down menu
+fetch('data/top_100_genes_per_cluster_sample_1.json')
+    .then(response => response.json())
+    .then(geneData => {
+        const clusterSelect = document.getElementById('cluster-select');
+        
+        clusterSelect.innerHTML = Object.keys(geneData)
+            .map(cluster => `<option value="${cluster}">Cluster ${cluster}</option>`)
+            .join('');
+
+        // Handle cluster selection change
+        clusterSelect.addEventListener('change', function() {
+            const selectedCluster = this.value;
+            const tableBody = document.querySelector('#gene-table tbody');
+            tableBody.innerHTML = ''; // Clear previous rows
+
+            if (selectedCluster) {
+                const genes = geneData[selectedCluster];
+                genes.forEach(gene => {
+                    const row = document.createElement('tr');
+                    row.innerHTML = `
+                        <td>${gene.gene_name}</td>
+                        <td>${gene.score.toFixed(2)}</td>
+                        <td>${gene.log2_FC.toFixed(2)}</td>
+                        <td>${(gene.pct1 * 100).toFixed(2)}%</td>
+                        <td>${(gene.pct2 * 100).toFixed(2)}%</td>
+                        <td>${gene.pval_adj}</td>
+                    `;
+                    tableBody.appendChild(row);
                 });
             }
         });
-
-        plot.on('plotly_unhover', function() {
-            console.log('Mouse left the plot area');
-        });
-
-        // Load gene data and populate the drop-down menu
-        fetch('data/top_genes_per_cluster_1.json')
-            .then(response => response.json())
-            .then(geneData => {
-                const clusterSelect = document.getElementById('cluster-select');
-                Object.keys(geneData).forEach(cluster => {
-                    const option = document.createElement('option');
-                    option.value = cluster;
-                    option.textContent = cluster;
-                    clusterSelect.appendChild(option);
-                });
-
-                // Handle cluster selection change
-                clusterSelect.addEventListener('change', function() {
-                    const selectedCluster = this.value;
-                    const tableBody = document.querySelector('#gene-table tbody');
-                    tableBody.innerHTML = ''; // Clear previous rows
-
-                    if (selectedCluster) {
-                        const genes = geneData[selectedCluster];
-                        genes.forEach(gene => {
-                            const row = document.createElement('tr');
-                            row.innerHTML = `
-                                <td>${gene.gene_name}</td>
-                                <td>${gene.score.toFixed(2)}</td>
-                                <td>${gene.log2_FC.toFixed(2)}</td>
-                                <td>${(gene.pct1 * 100).toFixed(2)}%</td>
-                                <td>${(gene.pct2 * 100).toFixed(2)}%</td>
-                                <td>${gene.pval_adj.toExponential(2)}</td>
-                            `;
-                            tableBody.appendChild(row);
-                        });
-                    }
-                });
-            })
-            .catch(error => console.error('Error loading gene data:', error));
     })
-    .catch(error => console.error('Error loading UMAP data:', error));
+    .catch(handleError);
+
+// Fetch the cell_gene_expression.json file
+fetch('data/cell_gene_expression.json')
+    .then(response => response.json())
+    .then(data => {
+        // Function to handle cell ID input
+        document.getElementById('cell-id-input').addEventListener('change', function() {
+            const cellId = this.value;
+            const genes = data[cellId];
+
+            // Clear previous table rows
+            const tbody = document.querySelector('#cell-table tbody');
+            tbody.innerHTML = '';
+
+            if (genes) {
+                genes.forEach(([geneName, score]) => {
+                    const row = tbody.insertRow();
+                    row.insertCell(0).innerText = geneName;
+                    row.insertCell(1).innerText = (score / 100).toFixed(2) + '%'; // Convert to percentage
+                });
+            } else {
+                //alert('Cell ID not found.');
+            }
+        });
+    })
+    .catch(handleError);
+
+//****************** Gene selection part ******************/
+// Load the gene expression data
+let geneExpressionData;
+
+fetch('data/gene_cell_expression.json')
+    .then(response => response.json())
+    .then(data => {
+        geneExpressionData = data; // Store the data
+    });
+
+// Function to populate the table
+function populateGeneTable(gene) {
+    const tableBody = document.querySelector('#gene-expression-table tbody');
+    tableBody.innerHTML = ''; // Clear the previous rows
+
+    if (geneExpressionData.hasOwnProperty(gene)) {
+        const cells = geneExpressionData[gene];
+        
+        for (const [cellId, expressionValue] of Object.entries(cells)) {
+            const row = document.createElement('tr');
+            
+            const cellIdCell = document.createElement('td');
+            cellIdCell.textContent = cellId;
+            
+            const expressionCell = document.createElement('td');
+            expressionCell.textContent = expressionValue.toFixed(2); // Format the value
+            
+            row.appendChild(cellIdCell);
+            row.appendChild(expressionCell);
+            
+            tableBody.appendChild(row);
+        }
+    } else {
+        // Display message if gene not found
+        const row = document.createElement('tr');
+        const noDataCell = document.createElement('td');
+        noDataCell.colSpan = 2;
+        noDataCell.textContent = 'Gene not found';
+        row.appendChild(noDataCell);
+        tableBody.appendChild(row);
+    }
+}
+
+// Event listener for the submit button
+document.getElementById('gene-submit').addEventListener('click', () => {
+    const geneInput = document.getElementById('gene-input').value.trim().toUpperCase();
+    if (geneInput) {
+        populateGeneTable(geneInput);
+    }
+});
