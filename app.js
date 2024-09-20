@@ -160,7 +160,8 @@ function populateGeneTable(gene) {
             cellIdCell.textContent = cellId;
             
             const expressionCell = document.createElement('td');
-            expressionCell.textContent = expressionValue.toFixed(2); // Format the value
+            const expressionValuePercent = expressionValue / 100
+            expressionCell.textContent = expressionValuePercent.toFixed(2); // Format the value
             
             row.appendChild(cellIdCell);
             row.appendChild(expressionCell);
