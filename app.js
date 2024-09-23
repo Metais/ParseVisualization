@@ -196,7 +196,7 @@ function geneToCellTable(geneToCellData) {
                 // Display message if gene not found
                 const row = document.createElement('tr');
                 const noDataCell = document.createElement('td');
-                noDataCell.colSpan = 2;
+                noDataCell.colSpan = 4;
                 noDataCell.textContent = 'Gene not found';
                 row.appendChild(noDataCell);
                 tableBody.appendChild(row);
