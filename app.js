@@ -145,10 +145,13 @@ function cellToGeneTable(cellToGeneData, cellClusterData) {
 
         // Populate gene expression table if the cell is found
         if (genes) {
-            genes.forEach(([geneName, score]) => {
+            let index = 1;  // Initialize a 1-based index
+            Object.entries(genes).forEach(([geneName, relativeExpression]) => {
                 const row = tbody.insertRow();
-                row.insertCell(0).innerText = geneName;
-                row.insertCell(1).innerText = (score / 100).toFixed(2) + '%'; // Convert to percentage
+                row.insertCell(0).innerText = index;  // Use index for gene ranking
+                row.insertCell(1).innerText = geneName;
+                row.insertCell(2).innerText = relativeExpression;
+                index++;  // Increment index for each gene
             });
         } else {
             // alert('Cell ID not found.');
@@ -167,17 +170,24 @@ function geneToCellTable(geneToCellData) {
             if (geneToCellData.hasOwnProperty(geneInput)) {
                 const cells = geneToCellData[geneInput];
                 
-                for (const [cellId, expressionValue] of Object.entries(cells)) {
+                for (const [rank, [cellId, cluster, expressionValue]] of Object.entries(cells)) {
                     const row = document.createElement('tr');
                     
+                    const rankCell = document.createElement('td');
+                    rankCell.textContent = Number(rank) + 1
+
                     const cellIdCell = document.createElement('td');
                     cellIdCell.textContent = cellId;
+
+                    const clusterCell = document.createElement('td');
+                    clusterCell.textContent = cluster;
                     
                     const expressionCell = document.createElement('td');
-                    const expressionValuePercent = expressionValue / 100
-                    expressionCell.textContent = expressionValuePercent.toFixed(2); // Format the value
+                    expressionCell.textContent = expressionValue
                     
+                    row.appendChild(rankCell);
                     row.appendChild(cellIdCell);
+                    row.appendChild(clusterCell);
                     row.appendChild(expressionCell);
                     
                     tableBody.appendChild(row);
