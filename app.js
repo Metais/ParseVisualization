@@ -161,7 +161,7 @@ function cellToGeneTable(cellToGeneData, cellClusterData) {
 
 function geneToCellTable(geneToCellData) {
     // Event listener for the submit button
-    document.getElementById('gene-submit').addEventListener('click', () => {
+    document.getElementById('gene-input').addEventListener('change', function() {
         const geneInput = document.getElementById('gene-input').value.trim().toUpperCase();
         if (geneInput) {
             const tableBody = document.querySelector('#gene-expression-table tbody');
