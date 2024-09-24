@@ -80,10 +80,6 @@ function plotData(umapData, cellClusterData, expressionData) {
                 color: colorMap[cluster],  // Background color
                 size: 4,
                 opacity: hasExpressionData ? 0.05 : 1,  // Almost invisible if expressionData available
-                line: {
-                    width: 0.5,
-                    color: '#000'
-                }
             },
             name: `Cluster ${cluster}`,
             text: traceData.map(d => d.text),
