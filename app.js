@@ -1,4 +1,7 @@
 const handleError = (error) => console.error('Error:', error);
+var geneSelected = false;
+var umapDataVar = '';
+var cellClusterDataVar = '';
 
 async function loadData() {
     try {
@@ -24,12 +27,26 @@ async function loadData() {
     }
 }
 
-function plotData(umapData, cellClusterData) {
+function plotData(umapData, cellClusterData, expressionData) {
+    // Clear any previous traces
+    Plotly.purge('umap-plot');  // Remove all previous traces and clear the plot area
+
+    const currentTraces = Plotly.d3.select('#umap-plot').selectAll('.trace');
+
     let clusters = [];
     let cellId = [];
+    const hasExpressionData = Object.keys(expressionData).length > 0;
 
+    // Only take a portion of cells (when looking at cluster)
+    let i = 0;
     for (const cell in umapData) {
-        cellId.push(Number(cell)); 
+        if (cell in expressionData) {
+            cellId.push(Number(cell)); 
+        }
+        else if (i % 5 === 0) {
+            cellId.push(Number(cell)); 
+        }
+        i++;
     }
     for (const cell in cellClusterData) {
         clusters.push(cellClusterData[cell])
@@ -44,66 +61,106 @@ function plotData(umapData, cellClusterData) {
         colorMap[cluster] = `hsl(${index * (360 / uniqueClusters.length)}, 70%, 50%)`;  // Generating a distinct color
     });
 
-    // Prepare traces for each cluster (to show in the legend)
-    const traces = uniqueClusters.map(cluster => {
-        // Collect the indices of cells in the downsampled cellId that belong to the current cluster
+    // Prepare traces for each cluster (background cells)
+    const backgroundTraces = uniqueClusters.map(cluster => {
         const traceData = cellId
-            .filter(id => {
-                return clusters[id] === cluster; // Check if the cluster matches
-            })
-            .map(id => {
-                return {
-                    x: umapData[id].UMAP1,
-                    y: umapData[id].UMAP2,
-                    text: `Cluster: ${clusters[id]}\nCell Id: ${id}`
-                };
-            });
+            .filter(id => clusters[id] === cluster)  // Match cells to the current cluster
+            .map(id => ({
+                x: umapData[id].UMAP1,
+                y: umapData[id].UMAP2,
+                text: `Cluster: ${clusters[id]}\nCell Id: ${id}`,
+                expression: expressionData[id] || 0  // Include expression data, default to 0 if missing
+            }));
 
         return {
             x: traceData.map(d => d.x),
             y: traceData.map(d => d.y),
             mode: 'markers',
             marker: {
-                color: colorMap[cluster],
-                size: 6,
+                color: colorMap[cluster],  // Background color
+                size: 4,
+                opacity: hasExpressionData ? 0.05 : 1,  // Almost invisible if expressionData available
                 line: {
                     width: 0.5,
                     color: '#000'
                 }
             },
             name: `Cluster ${cluster}`,
-            text: traceData.map(d => d.text),
+            text: 'traceData.map(d => d.text)',
             hovertemplate: '%{text}<extra></extra>',
-            hoverinfo: 'text'
+            hoverinfo: 'text',
+            showlegend: !hasExpressionData
         };
     });
+
+    // Create a trace for cells with non-zero expression values
+    const highlightTrace = {
+        x: [],
+        y: [],
+        mode: 'markers',
+        marker: {
+            color: [],
+            colorscale: 'Viridis',  // Choose a color scale for expression values
+            size: 6,
+            opacity: 1,
+            colorbar: {
+                title: 'Log2 Expression',
+                thickness: 8,  // Reduced thickness
+                len: 0.8,  // Adjust length of the color bar
+                xanchor: 'left',
+                titleside: 'right',
+                x: 1.05,  // Positioning to the right of the plot
+                y: 0.5,  // Center vertically
+                ypad: 10  // Padding to ensure it doesn't overlap the legend
+            }
+        },
+        text: [],
+        hovertemplate: '%{text}<br>Log2 Expression: %{marker.color:.2f}<extra></extra>',
+        hoverinfo: 'text',
+        showlegend: false
+    };
+
+    // Iterate through expressionData to populate the highlight trace
+    for (const cell in expressionData) {
+        const exprValue = expressionData[cell];
+        if (exprValue > 0) {  // Only include non-zero expression values
+            highlightTrace.x.push(umapData[cell].UMAP1);
+            highlightTrace.y.push(umapData[cell].UMAP2);
+            highlightTrace.marker.color.push(Math.log2(exprValue + 1));  // Log-scale the expression value
+            highlightTrace.text.push(`Cell Id: ${cell}\nCluster: ${cellClusterData[cell]}`);
+        }
+    }
 
     const layout = {
         title: 'UMAP Cluster Visualization (Downsampled)',
         xaxis: { title: 'UMAP1' },
         yaxis: { title: 'UMAP2' },
         showlegend: true,
-        legend: { title: { text: 'Clusters' } },
+        legend: { title: { text: hasExpressionData ? '' : 'Clusters' } },
         height: 600,
         width: 800,
         hovermode: 'closest'  // Ensures that only the closest point’s info is shown
     };
 
-    // Plot all traces
-    Plotly.newPlot('umap-plot', traces, layout);
+    // Plot both the background cells and the highlighted cells
+    const allTraces = [...backgroundTraces, highlightTrace];
+    console.log("Traces before plotting:", Plotly.d3.select('#umap-plot').selectAll('.trace').data());
+    Plotly.newPlot('umap-plot', allTraces, layout);
+    console.log("Traces before plotting:", Plotly.d3.select('#umap-plot').selectAll('.trace').data());
 }
 
 function topNGenesPerClusterTable(top100GenesPerClusterData) {
     const clusterSelect = document.getElementById('cluster-select');
         
-    clusterSelect.innerHTML = Object.keys(top100GenesPerClusterData)
+    clusterSelect.innerHTML = `<option value="">Select Cluster</option>` + 
+        Object.keys(top100GenesPerClusterData)
         .map(cluster => `<option value="${cluster}">Cluster ${cluster}</option>`)
         .join('');
 
     // Handle cluster selection change
     clusterSelect.addEventListener('change', function() {
         const selectedCluster = this.value;
-        const tableBody = document.querySelector('#gene-table tbody');
+        const tableBody = document.querySelector('#cluster-table tbody');
         tableBody.innerHTML = ''; // Clear previous rows
 
         if (selectedCluster) {
@@ -159,12 +216,12 @@ function cellToGeneTable(cellToGeneData, cellClusterData) {
     });
 }
 
-function geneToCellTable(geneToCellData) {
+function geneToCellTable(geneToCellData, cellClusterData, umapData) {
     // Event listener for the submit button
     document.getElementById('gene-input').addEventListener('change', function() {
         const geneInput = document.getElementById('gene-input').value.trim().toUpperCase();
         if (geneInput) {
-            const tableBody = document.querySelector('#gene-expression-table tbody');
+            const tableBody = document.querySelector('#gene-table tbody');
             tableBody.innerHTML = ''; // Clear the previous rows
 
             if (geneToCellData.hasOwnProperty(geneInput)) {
@@ -192,6 +249,15 @@ function geneToCellTable(geneToCellData) {
                     
                     tableBody.appendChild(row);
                 }
+
+                const expressionData = cells.reduce((dict, cell) => {
+                    dict[cell[0]] = cell[2]; // Dict of cellId: ExpressionValue
+                    return dict;
+                }, {});
+
+                // Make a second plot, using the cells and their expression as input
+                plotData(umapData, cellClusterData, expressionData)
+                geneSelected = true;
             } else {
                 // Display message if gene not found
                 const row = document.createElement('tr');
@@ -205,13 +271,49 @@ function geneToCellTable(geneToCellData) {
     });
 }
 
+
 loadData().then(({ umapData, cellClusterData, geneBaselineData, top100GenesPerClusterData, cellToGeneData, geneToCellData }) => {
-    plotData(umapData, cellClusterData);
+    plotData(umapData, cellClusterData, []);
 
     topNGenesPerClusterTable(top100GenesPerClusterData);
     
     cellToGeneTable(cellToGeneData, cellClusterData);
 
-    geneToCellTable(geneToCellData);
+    geneToCellTable(geneToCellData, cellClusterData, umapData);
+
+    document.getElementById("loading").remove();
+
+    umapDataVar = umapData;
+    cellClusterDataVar = cellClusterData;
 });
 
+document.addEventListener('DOMContentLoaded', function() {
+    // Get all the radio buttons with name 'table-select'
+    const radioButtons = document.querySelectorAll('input[name="Table Select"]');
+
+    // Function to hide all tables
+    function hideAllTables() {
+        document.querySelectorAll('.table-container').forEach(table => {
+            table.classList.remove('active');
+        });
+    }
+
+    // Add an event listener to each radio button
+    radioButtons.forEach(radio => {
+        radio.addEventListener('change', function() {
+            hideAllTables();
+            const selectedTable = this.value;
+            document.getElementById(selectedTable).classList.add('active');
+
+            // If a gene is highlighted in the plot and the table changes, go back to normal
+            if (geneSelected) {
+                plotData(umapDataVar, cellClusterDataVar, []);
+                geneSelected = false;
+            }
+        });
+    });
+
+    // Initialize with the first table visible
+    hideAllTables();
+    document.getElementById('cluster-table-container').classList.add('active');
+});

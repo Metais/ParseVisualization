@@ -7,8 +7,9 @@ body {
 }
 
 #container {
-    display: flex; /* Use flexbox for horizontal layout */
-    padding: 20px;
+    display: flex;
+    flex-direction: row;
+    height: 100vh;
 }
 
 h3 {
@@ -19,16 +20,42 @@ h3 {
     width: 100%; /* Ensure the title spans the full width */
 }
 
+/* Ensure the plot area takes up 50% of the width */
 #plot-area {
-    flex: 3; /* Plot area takes up 3 parts of the space */
-    margin-right: 20px; /* Space between plot and tables */
+    padding: 20px;
+    box-sizing: border-box;
 }
 
-#tables-area {
-    display: flex; /* Arrange tables horizontally */
-    flex: 2; /* Tables area takes up 2 parts of the space */
-    flex-direction: column; /* Stack tables vertically */
-    width: 100%; /* Full width */
+/* Ensure the table section stretches but is anchored to the left, hugging the plot */
+#table-section {
+    flex-grow: 1; /* Allow it to stretch */
+    padding: 20px;
+    box-sizing: border-box;
+    overflow-y: auto; /* Enable scrolling if the content exceeds the viewport */
+}
+
+/* Adjust layout on smaller screens */
+@media (max-width: 1200px) {
+    #container {
+        flex-direction: column; /* Stack the plot and table vertically on small screens */
+    }
+
+    #plot-area, #table-section {
+        width: 100%; /* Make both sections take up the full width */
+        min-width: unset; /* Remove min-width on small screens */
+    }
+}
+
+.table-container {
+    display: none;
+}
+
+#table-toggle {
+    margin-bottom: 15px;
+}
+
+.table-container.active {
+    display: block;
 }
 
 #subtables-area {
@@ -37,7 +64,15 @@ h3 {
     width: 100%;
 }
 
-#input-cluster-area, #input-cell-area {
+#radio-select {
+    margin-bottom: 10px;
+}
+
+#cell-button, #gene-button {
+    margin-left: 30px;
+}
+
+#input-cluster-area, #input-cell-area, #input-gene-area {
     margin-bottom: 10px; /* Space below the cluster selector */
 }
 
@@ -61,59 +96,30 @@ h3 {
     margin-top: 10px; /* Space above the table */
 }
 
-#cell-table, #gene-table {
+table {
     width: 100%;
     border-collapse: collapse;
 }
 
-#cell-table th, #cell-table td, #gene-table th, #gene-table td {
+table th, td {
     border: 1px solid #ddd;
     padding: 12px;
     text-align: left;
 }
 
-#cell-table th, #gene-table th {
+table th {
     background-color: #f4f4f4;
     font-weight: bold;
 }
 
-#cell-table tr:nth-child(even), #gene-table tr:nth-child(even) {
-    background-color: #f9f9f9;
-}
-
-#cell-table tr:hover, #gene-table tr:hover {
-    background-color: #f1f1f1;
-}
-
-#cell-table td, #gene-table td {
+table td {
     font-size: 14px;
 }
 
-.gene-expression-section {
-    margin-top: 20px;
+table tr:nth-child(even) {
+    background-color: #f9f9f9;
 }
 
-#gene-expression-table-container {
-    margin-top: 15px;
-    overflow-y: auto;
-    max-height: 400px; /* Set max height for scrollability */
-}
-
-#gene-expression-table {
-    width: 100%;
-    border-collapse: collapse;
-}
-
-#gene-expression-table th, #gene-expression-table td {
-    border: 1px solid #ddd;
-    padding: 8px;
-}
-
-#gene-expression-table th {
-    background-color: #f2f2f2;
-    text-align: left;
-}
-
-#gene-expression-table td {
-    text-align: left;
+table tr:hover {
+    background-color: #f1f1f1;
 }

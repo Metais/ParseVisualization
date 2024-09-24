@@ -11,63 +11,68 @@
         <h3>Parse PBMCs Experiment: Sample 1</h3>
     </header>
     <div id="container">
-        <div id="plot-area">
-            <div id="umap-plot"></div>
+        <div id="plot-container">
+            <div id="plot-area">
+                <div id="umap-plot"></div>
+                <t id="loading">Loading... this might take 10 to 20 seconds</t>
+            </div>
         </div>
-        <div id="tables-area">
-            <div id="subtables-area">
-                <div id="input-cluster-area"></div>
+        <div id="table-section">
+            <form id="radio-select">
+                <input class="table-select" type="radio" id="cluster-button" name="Table Select" value="cluster-table-container" checked>
+                <label for="cluster-button">Cluster Table</label>
+                <input class="table-select" type="radio" id="cell-button" name="Table Select" value="cell-table-container">
+                <label for="cell-button">Cell Table</label>
+                <input class="table-select" type="radio" id="gene-button" name="Table Select" value="gene-table-container">
+                <label for="gene-button">Gene Table</label>
+            </form>
+
+            <!-- All tables will be stacked but hidden, only one shown at a time -->
+            <div id="cluster-table-container" class="table-container">
+                <div id="input-cluster-area">
                     <select id="cluster-select">
                         <option value="">Select Cluster</option>
                     </select>
                 </div>
-                <div id="table-container">
-                    <table id="gene-table">
-                        <thead>
-                            <tr>
-                                <th>Gene Name</th>
-                                <th>Score</th>
-                                <th>Log2 FC</th>
-                                <th>Pct1</th>
-                                <th>Pct2</th>
-                                <th>Adjusted P-Value</th>
-                            </tr>
-                        </thead>
-                        <tbody>
-                            <!-- Rows will be populated by JavaScript -->
-                        </tbody>
-                    </table>
-                </div>
+                <table id="cluster-table">
+                    <thead>
+                        <tr>
+                            <th>Gene Name</th>
+                            <th>Score</th>
+                            <th>Log2 FC</th>
+                            <th>Pct1</th>
+                            <th>Pct2</th>
+                            <th>Adjusted P-Value</th>
+                        </tr>
+                    </thead>
+                    <tbody></tbody>
+                </table>
             </div>
-            <div id="subtables-area">
+
+            <div id="cell-table-container" class="table-container">
                 <div id="input-cell-area">
                     <input type="text" id="cell-id-input" placeholder="Enter Cell ID" />
                     <div id="cell-cluster-info" style="display:inline-block; margin-left: 15px; font-weight:bold;">
                         <!-- Cluster info will be displayed here -->
                     </div>
                 </div>
-                <div id="table-container">
-                    <table id="cell-table">
-                        <thead>
-                            <tr>
-                                <th>Rank</th>
-                                <th>Gene Name</th>
-                                <th>Relative Expression</th>
-                            </tr>
-                        </thead>
-                        <tbody>
-                            <!-- Rows will be populated by JavaScript -->
-                        </tbody>
-                    </table>
-                </div>
+                <table id="cell-table">
+                    <thead>
+                        <tr>
+                            <th>Rank</th>
+                            <th>Gene Name</th>
+                            <th>Relative Expression</th>
+                        </tr>
+                    </thead>
+                    <tbody></tbody>
+                </table>
             </div>
-        </div>
-        <div class="gene-expression-section">
-            <label for="gene-input">Enter Gene Name:</label>
-            <input type="text" id="gene-input" placeholder="Enter gene name">
 
-            <div id="gene-expression-table-container">
-                <table id="gene-expression-table">
+            <div id="gene-table-container" class="table-container">
+                <div id="input-gene-area">
+                    <input type="text" id="gene-input" placeholder="Enter gene name">
+                </div>
+                <table id="gene-table">
                     <thead>
                         <tr>
                             <th>Rank</th>
@@ -76,12 +81,10 @@
                             <th>Relative Expression</th>
                         </tr>
                     </thead>
-                    <tbody>
-                        <!-- Rows will be dynamically populated -->
-                    </tbody>
+                    <tbody></tbody>
                 </table>
             </div>
-        </div>        
+        </div>       
     </div>
     <script src="https://cdn.plot.ly/plotly-latest.min.js"></script>
     <script src="app.js"></script>
