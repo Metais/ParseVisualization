@@ -86,7 +86,7 @@ function plotData(umapData, cellClusterData, expressionData) {
                 }
             },
             name: `Cluster ${cluster}`,
-            text: 'traceData.map(d => d.text)',
+            text: traceData.map(d => d.text),
             hovertemplate: '%{text}<extra></extra>',
             hoverinfo: 'text',
             showlegend: !hasExpressionData
