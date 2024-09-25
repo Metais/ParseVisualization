@@ -25,14 +25,21 @@
                 <label for="cell-button">Cell Table</label>
                 <input class="table-select" type="radio" id="gene-button" name="Table Select" value="gene-table-container">
                 <label for="gene-button">Gene Table</label>
+                <input class="table-select" type="radio" id="celltype-button" name="Table Select" value="marker-container">
+                <label for="celltype-button">Cell type analysis</label>
             </form>
 
             <!-- All tables will be stacked but hidden, only one shown at a time -->
             <div id="cluster-table-container" class="table-container">
-                <div id="input-cluster-area">
-                    <select id="cluster-select">
-                        <option value="">Select Cluster</option>
-                    </select>
+                <div id="input-cluster-div">
+                    <div id="input-cluster-area">
+                        <select id="cluster-select">
+                            <option value="">Select Cluster</option>
+                        </select>
+                    </div>
+                    <div id="cluster-cellnum-info" style="display:inline-block; margin-left: 15px; font-weight:bold;">
+                        <t></t>
+                    </div>
                 </div>
                 <table id="cluster-table">
                     <thead>
@@ -40,8 +47,8 @@
                             <th>Gene Name</th>
                             <th>Score</th>
                             <th>Log2 FC</th>
-                            <th>Pct1</th>
-                            <th>Pct2</th>
+                            <th>Percent-in</th>
+                            <th>Percent-out</th>
                             <th>Adjusted P-Value</th>
                         </tr>
                     </thead>
@@ -79,6 +86,52 @@
                             <th>Cell ID</th>
                             <th>Cluster</th>
                             <th>Relative Expression</th>
+                        </tr>
+                    </thead>
+                    <tbody></tbody>
+                </table>
+            </div>
+
+            <div id="marker-container" class="table-container">
+                <button id="from-input-next-btn" style="display:inline-block; margin-left: 50px;">Next</button>
+                <table id="marker-table">
+                    <thead>
+                        <tr>
+                            <th>Cell Type</th>
+                            <th>Marker Genes (comma-separated)</th>
+                        </tr>
+                    </thead>
+                    <tbody id="marker-tbody"></tbody>
+                </table>
+            </div>
+
+            <div id="celltype-container" class="table-container" style="display: none;">
+                <button id="from-celltype-back-btn">Back</button>
+                <button id="from-celltype-next-btn">Next</button>
+                <table id="celltype-table">
+                    <thead>
+                        <tr>
+                            <th>Cell Type</th>
+                            <th>Marker Gene</th>
+                            <th>Cluster</th>
+                            <th>Score</th>
+                            <th>Adjusted P-Value</th>
+                        </tr>
+                    </thead>
+                    <tbody></tbody>
+                </table>
+            </div>
+            
+            <div id="cluster-celltype-container" class="table-container" style="display: none;">
+                <button id="from-cluster-back-btn">Back</button>
+                <table id="cluster-celltype-table">
+                    <thead>
+                        <tr>
+                            <th>Cluster</th>
+                            <th>Cell Type</th>
+                            <th>Marker Gene</th>
+                            <th>Score</th>
+                            <th>Adjusted P-Value</th>
                         </tr>
                     </thead>
                     <tbody></tbody>

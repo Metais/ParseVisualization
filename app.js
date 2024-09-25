@@ -1,4 +1,31 @@
 const handleError = (error) => console.error('Error:', error);
+
+// Hard-coded cell types and their corresponding marker genes
+const cellTypesWithMarkers = {
+    "CD14 Mono": ["CD14", "VCAN", "CCR2", "TLR4", "TREM1", "NLRP3", "NLRP12", "CD36", "SIGLEC1", "OLR1", "SIRPA", "CD163"],
+    "CD4 Naive": ["SELL", "IL2RA", "CCR7", "CD4"],  // CD4 naive vs CD8 naive have near-identical expr profiles, look at these specific ones
+    "CD4 Memory": ["CD27", "CD44", "IL7R", "TCF7", "BCL2", "LEF1", "CCR7", "TRAT1"],
+    "CD8 Memory": ["KLRG1", "CX3CR1"],
+    "CD8 Naive": ["SELL", "IL2RA", "CCR7", "CD8A", "CD8B", "GNLY"],
+    "NK": ["GNLY", "NKG7"],
+    "CD16 Mono": ["FCGR3A", "MS4A7"],
+    "B Naive": ["MS4A1", "SIGLEC2", "CD40", "CXCR5"],
+    "T reg": ["FOXP3", "IL2RA", "CTLA4", "CCR4", "CCR6", "GATA3"],
+    "NKT": ["CD3D", "TRAV1-2", "KLRB1"],
+    "cDC2": ["CD1C"],
+    "B Intermediate": ["CD19", "CD27", "MS4A1"],
+    "NK CD56bright": ["NCAM1", "XCL1", "XCL2"],
+    "MAIT": ["SLC4A10", "KLRB1", "TRAV1-2"],
+    "B Memory": ["MS4A1", "CD27", "CD38"],
+    "Gamma Delta T": ["TRDC", "TRGC2"],
+    "pDC": ["LILRA4", "IL3RA", "CLEC4C"],
+    "Proliferating": ["MKI67"],
+    "HSPC": ["CD34"],
+    "Plasmablast": ["PRDM1", "XBP1", "MZB1"],
+    "cDC1": ["CLEC9A"],
+    "ILC": ["KIT", "KLRB1", "IL7R"]
+};
+
 var geneSelected = false;
 var umapDataVar = '';
 var cellClusterDataVar = '';
@@ -145,8 +172,14 @@ function plotData(umapData, cellClusterData, expressionData) {
     console.log("Traces before plotting:", Plotly.d3.select('#umap-plot').selectAll('.trace').data());
 }
 
-function topNGenesPerClusterTable(top100GenesPerClusterData) {
+function topNGenesPerClusterTable(top100GenesPerClusterData, cellClusterData) {
     const clusterSelect = document.getElementById('cluster-select');
+
+    let clusterCellCount = {}
+    for (let key in cellClusterData) {
+        let value = cellClusterData[key]
+        clusterCellCount[value] = (clusterCellCount[value] || 0) + 1;
+    }
         
     clusterSelect.innerHTML = `<option value="">Select Cluster</option>` + 
         Object.keys(top100GenesPerClusterData)
@@ -156,6 +189,15 @@ function topNGenesPerClusterTable(top100GenesPerClusterData) {
     // Handle cluster selection change
     clusterSelect.addEventListener('change', function() {
         const selectedCluster = this.value;
+
+        // Display cluster information
+        const cellNumDisplay = document.getElementById('cluster-cellnum-info');
+        if (selectedCluster) {
+            cellNumDisplay.innerText = `Number of cells in cluster: ${clusterCellCount[selectedCluster]}`;
+        } else {
+            cellNumDisplay.innerText = 'Cluster: Not found';
+        }
+
         const tableBody = document.querySelector('#cluster-table tbody');
         tableBody.innerHTML = ''; // Clear previous rows
 
@@ -267,15 +309,196 @@ function geneToCellTable(geneToCellData, cellClusterData, umapData) {
     });
 }
 
+function cellTypeSection(top100GenesPerClusterData) {
+    const tableBody = document.querySelector('#celltype-table tbody');
+    tableBody.innerHTML = ''; // Clear any previous content
+
+    const markerInputs = document.querySelectorAll('.marker-input');
+    const updatedMarkers = {};
+
+    // Gather the updated marker genes from the input table
+    markerInputs.forEach(input => {
+        const cellType = input.dataset.cellType;
+        const markerGenes = input.value.split(',').map(g => g.trim());
+        updatedMarkers[cellType] = markerGenes;
+    });
+
+    let lastCellType = null; // Track last cell type for row span
+
+    Object.entries(updatedMarkers).forEach(([cellType, markerGenes]) => {
+        markerGenes.forEach((markerGene, index) => {
+            const clustersWithGene = findMarkerGeneInClusters(markerGene, top100GenesPerClusterData);
+            let cellTypeMessage = (index === 0 && lastCellType !== cellType) ? cellType : '';
+            if (clustersWithGene.length === 0) {
+                // Handle "Not found" case
+                const row = document.createElement('tr');
+                row.innerHTML = `
+                    <td>${cellTypeMessage}</td>
+                    <td>${markerGene}</td>
+                    <td>Not found</td>
+                    <td>-1</td>
+                    <td>Not found</td>
+                `;
+                tableBody.appendChild(row);
+            } else {
+                let rowsWritten = 0
+                clustersWithGene.forEach(clusterInfo => {
+                    const row = document.createElement('tr');
+
+                    // Remove the Cell Type column info after first row
+                    rowsWritten++;
+                    if (rowsWritten > 1) {
+                        cellTypeMessage = '';
+                    }
+
+                    row.innerHTML = `
+                        <td>${cellTypeMessage}</td>
+                        <td>${markerGene}</td>
+                        <td>${clusterInfo.cluster}</td>
+                        <td>${clusterInfo.score.toFixed(2)}</td>
+                        <td>${clusterInfo.pval_adj}</td>
+                    `;
+                    tableBody.appendChild(row);
+                });
+            }
+
+            lastCellType = cellType; // Update last seen cell type
+        });
+    });
+}
+
+function clusterCellTypeSection(top100GenesPerClusterData) {
+    const tableBody = document.querySelector('#cluster-celltype-table tbody');
+    tableBody.innerHTML = ''; // Clear any previous content
+
+    const markerInputs = document.querySelectorAll('.marker-input');
+    const updatedMarkers = {};
+
+    // Gather the updated marker genes from the input table
+    markerInputs.forEach(input => {
+        const cellType = input.dataset.cellType;
+        const markerGenes = input.value.split(',').map(g => g.trim());
+        updatedMarkers[cellType] = markerGenes;
+    });
+
+    // Create a mapping from clusters to cell types and marker genes
+    const clusterToCellTypes = {};
+
+    Object.entries(updatedMarkers).forEach(([cellType, markerGenes]) => {
+        markerGenes.forEach(markerGene => {
+            const clustersWithGene = findMarkerGeneInClusters(markerGene, top100GenesPerClusterData);
+
+            if (clustersWithGene.length !== 0) {
+                clustersWithGene.forEach(clusterInfo => {
+                    // Add or update cell types per cluster
+                    if (!clusterToCellTypes[clusterInfo.cluster]) {
+                        clusterToCellTypes[clusterInfo.cluster] = [];
+                    }
+                    clusterToCellTypes[clusterInfo.cluster].push({
+                        cellType,
+                        markerGene,
+                        score: clusterInfo.score,
+                        pval_adj: clusterInfo.pval_adj
+                    });
+                });
+            }
+        });
+    });
+
+    // Now, iterate over the clusterToCellTypes object and populate the table
+    Object.entries(clusterToCellTypes).forEach(([cluster, cellTypeData]) => {
+        cellTypeData.forEach((data, index) => {
+            const row = document.createElement('tr');
+            row.innerHTML = `
+                <td>${index === 0 ? cluster : ''}</td>
+                <td>${data.cellType}</td>
+                <td>${data.markerGene}</td>
+                <td>${data.score.toFixed(2)}</td>
+                <td>${data.pval_adj}</td>
+            `;
+            tableBody.appendChild(row);
+        });
+    });
+}
+
+
+// Populate the main cell type table based on the input from the marker editing table
+function cellTypeTable(top100GenesPerClusterData) {
+    // Switch between the marker editing table and the main cell type table
+    document.getElementById('from-input-next-btn').addEventListener('click', () => {
+        document.getElementById('marker-container').style.display = 'none';
+        document.getElementById('celltype-container').style.display = 'block';
+
+        cellTypeSection(top100GenesPerClusterData); // Call this with the actual data
+    });
+
+    document.getElementById('from-celltype-back-btn').addEventListener('click', () => {
+        document.getElementById('celltype-container').style.display = 'none';
+        document.getElementById('marker-container').style.display = 'block';
+    });
+
+    document.getElementById('from-celltype-next-btn').addEventListener('click', () => {
+        document.getElementById('celltype-container').style.display = 'none';
+        document.getElementById('cluster-celltype-container').style.display = 'block';
+
+        clusterCellTypeSection(top100GenesPerClusterData);
+    });
+
+    document.getElementById('from-cluster-back-btn').addEventListener('click', () => {
+        document.getElementById('celltype-container').style.display = 'block';
+        document.getElementById('cluster-celltype-container').style.display = 'none';
+    });
+
+    // Initial population of marker table
+    populateMarkerTable();
+}
+
+// Function to find the gene prevalence in clusters
+function findMarkerGeneInClusters(markerGene, top100GenesPerClusterData) {
+    const clustersWithGene = [];
+
+    Object.values(top100GenesPerClusterData).forEach(clusterGenes => {
+        clusterGenes.forEach(geneInfo => {
+            if (geneInfo.gene_name === markerGene) {
+                anyFound = true;
+                clustersWithGene.push({
+                    cluster: geneInfo.cluster,
+                    score: geneInfo.score,
+                    pval_adj: geneInfo.pval_adj
+                });
+            }
+        });
+    });
+
+    return clustersWithGene;
+}
+
+// Populate the marker editing table
+function populateMarkerTable() {
+    const tableBody = document.querySelector('#marker-tbody');
+    
+    Object.entries(cellTypesWithMarkers).forEach(([cellType, markerGenes]) => {
+        const row = document.createElement('tr');
+        row.innerHTML = `
+            <td>${cellType}</td>
+            <td><input type="text" value="${markerGenes.join(', ')}" class="marker-input" data-cell-type="${cellType}"></td>
+        `;
+        tableBody.appendChild(row);
+    });
+}
+
+
 
 loadData().then(({ umapData, cellClusterData, geneBaselineData, top100GenesPerClusterData, cellToGeneData, geneToCellData }) => {
     plotData(umapData, cellClusterData, []);
 
-    topNGenesPerClusterTable(top100GenesPerClusterData);
+    topNGenesPerClusterTable(top100GenesPerClusterData, cellClusterData);
     
     cellToGeneTable(cellToGeneData, cellClusterData);
 
     geneToCellTable(geneToCellData, cellClusterData, umapData);
+
+    cellTypeTable(top100GenesPerClusterData);
 
     document.getElementById("loading").remove();
 
