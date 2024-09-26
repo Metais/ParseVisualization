@@ -31,6 +31,8 @@ var geneSelected = false;
 // Global variables for loaded data, set to null initially
 let umapData = null, cellClusterData = null, geneBaselineData = null, 
 top100GenesPerClusterData = null, cellToGeneData = null, geneToCellData = null;
+// Also reset these eventListeners
+let clusterSelectChangeListener = null, cellIdChangeListener = null, geneInputChangeListener = null;
 
 // Actually calling the function for this sample here -- change later for multiple samples?
 callThisSample('1');
@@ -43,6 +45,191 @@ function resetData() {
     top100GenesPerClusterData = null;
     cellToGeneData = null;
     geneToCellData = null;
+
+}
+
+function removeClusterSelectListener() {
+    const clusterSelect = document.getElementById('cluster-select');
+    if (clusterSelectChangeListener) {
+        clusterSelect.removeEventListener('change', clusterSelectChangeListener);
+        clusterSelectChangeListener = null;
+    }
+}
+
+function removeCellIdChangeListener() {
+    const cellIdInput = document.getElementById('cell-id-input');
+    if (cellIdChangeListener) {
+        cellIdInput.removeEventListener('change', cellIdChangeListener);
+        cellIdChangeListener = null;
+    }
+}
+
+function removeGeneChangeListener() {
+    // Remove previous gene input listener
+    const geneInput = document.getElementById('gene-input');
+    if (geneInputChangeListener) {
+        geneInput.removeEventListener('change', geneInputChangeListener);
+        geneInputChangeListener = null;
+    }
+}
+
+// Function to set up new event listeners for topNGenesPerClusterTable
+function setupClusterSelectListener(top100GenesPerClusterData, clusterCellCount) {
+    // Remove old listener if exists
+    removeClusterSelectListener();
+
+    // Create a new change handler function
+    clusterSelectChangeListener = function() {
+        const selectedCluster = this.value;
+
+        // Display cluster information
+        const cellNumDisplay = document.getElementById('cluster-cellnum-info');
+        if (selectedCluster) {
+            cellNumDisplay.innerText = `Number of cells in cluster: ${clusterCellCount[selectedCluster]}`;
+        } else {
+            cellNumDisplay.innerText = 'Cluster: Not found';
+        }
+
+        const tableBody = document.querySelector('#cluster-table tbody');
+        tableBody.innerHTML = ''; // Clear previous rows
+
+        // Populate table if a cluster is selected
+        if (selectedCluster) {
+            const genes = top100GenesPerClusterData[selectedCluster];
+            genes.forEach((gene, index) => {
+                const row = document.createElement('tr');
+                row.innerHTML = `
+                    <td>${index + 1}</td>
+                    <td>${gene.gene_name}</td>
+                    <td>${gene.score.toFixed(2)}</td>
+                    <td>${gene.log2_FC.toFixed(2)}</td>
+                    <td>${(gene.pct1 * 100).toFixed(2)}%</td>
+                    <td>${(gene.pct2 * 100).toFixed(2)}%</td>
+                    <td>${gene.pval_adj}</td>
+                `;
+                tableBody.appendChild(row);
+            });
+        }
+    };
+
+    // Add the new event listener to cluster select dropdown
+    document.getElementById('cluster-select').addEventListener('change', clusterSelectChangeListener);
+}
+
+// Function to render the top N genes per cluster table
+function topNGenesPerClusterTable(top100GenesPerClusterData, cellClusterData) {
+    const clusterSelect = document.getElementById('cluster-select');
+
+    // Populate the cluster select dropdown with available clusters
+    let clusterCellCount = {}
+    for (let key in cellClusterData) {
+        let value = cellClusterData[key]
+        clusterCellCount[value] = (clusterCellCount[value] || 0) + 1;
+    }
+
+    // Populate the select dropdown with options
+    clusterSelect.innerHTML = `<option value="">Select Cluster</option>` +
+        Object.keys(top100GenesPerClusterData)
+            .map(cluster => `<option value="${cluster}">Cluster ${cluster}</option>`)
+            .join('');
+
+    // Set up the event listener for cluster select
+    setupClusterSelectListener(top100GenesPerClusterData, clusterCellCount);
+}
+
+function setupCellIdChangeListener(cellToGeneData, cellClusterData) {
+    removeCellIdChangeListener();
+
+    cellIdChangeListener = function() {
+        const cellId = this.value;
+        const genes = cellToGeneData[cellId];
+        const clusterInfo = cellClusterData[cellId];
+
+        // Clear previous table rows
+        const tbody = document.querySelector('#cell-table tbody');
+        tbody.innerHTML = '';
+
+        // Display cluster information
+        const clusterDisplay = document.getElementById('cell-cluster-info');
+        if (clusterInfo) {
+            clusterDisplay.innerText = `Cluster: ${clusterInfo}`;
+        } else {
+            clusterDisplay.innerText = 'Cluster: Not found';
+        }
+
+        // Populate gene expression table if the cell is found
+        if (genes) {
+            let index = 1;  // Initialize a 1-based index
+            Object.entries(genes).forEach(([geneName, relativeExpression]) => {
+                const row = tbody.insertRow();
+                row.insertCell(0).innerText = index;  // Use index for gene ranking
+                row.insertCell(1).innerText = geneName;
+                row.insertCell(2).innerText = relativeExpression;
+                index++;  // Increment index for each gene
+            });
+        } else {
+            // alert('Cell ID not found.');
+        }
+    };
+
+    document.getElementById('cell-id-input').addEventListener('change', cellIdChangeListener);
+}
+
+function setupGeneChangeListener(geneToCellData, cellClusterData, umapData) {
+    removeGeneChangeListener();
+
+    geneInputChangeListener = function () {
+        const geneInput = document.getElementById('gene-input').value.trim().toUpperCase();
+        if (geneInput) {
+            const tableBody = document.querySelector('#gene-table tbody');
+            tableBody.innerHTML = ''; // Clear the previous rows
+
+            if (geneToCellData.hasOwnProperty(geneInput)) {
+                const cells = geneToCellData[geneInput];
+                
+                for (const [rank, [cellId, cluster, expressionValue]] of Object.entries(cells)) {
+                    const row = document.createElement('tr');
+                    
+                    const rankCell = document.createElement('td');
+                    rankCell.textContent = Number(rank) + 1
+
+                    const cellIdCell = document.createElement('td');
+                    cellIdCell.textContent = cellId;
+
+                    const clusterCell = document.createElement('td');
+                    clusterCell.textContent = cluster;
+                    
+                    const expressionCell = document.createElement('td');
+                    expressionCell.textContent = expressionValue
+                    
+                    row.appendChild(rankCell);
+                    row.appendChild(cellIdCell);
+                    row.appendChild(clusterCell);
+                    row.appendChild(expressionCell);
+                    
+                    tableBody.appendChild(row);
+                }
+
+                const expressionData = cells.reduce((dict, cell) => {
+                    dict[cell[0]] = cell[2]; // Dict of cellId: ExpressionValue
+                    return dict;
+                }, {});
+
+                // Make a second plot, using the cells and their expression as input
+                plotData(umapData, cellClusterData, expressionData)
+                geneSelected = true;
+            } else {
+                // Display message if gene not found
+                const row = document.createElement('tr');
+                const noDataCell = document.createElement('td');
+                noDataCell.colSpan = 4;
+                noDataCell.textContent = 'Gene not found';
+                row.appendChild(noDataCell);
+                tableBody.appendChild(row);
+            }
+        }
+    };
+    document.getElementById('gene-input').addEventListener('change', geneInputChangeListener);
 }
 
 // Modified callThisSample to reset previous data before loading new sample
@@ -52,9 +239,10 @@ function callThisSample(sample) {
         ({ umapData, cellClusterData, geneBaselineData, top100GenesPerClusterData, cellToGeneData, geneToCellData } = data);
 
         plotData(umapData, cellClusterData, []);
+
         topNGenesPerClusterTable(top100GenesPerClusterData, cellClusterData);
-        cellToGeneTable(cellToGeneData, cellClusterData);
-        geneToCellTable(geneToCellData, cellClusterData, umapData);
+        setupCellIdChangeListener(cellToGeneData, cellClusterData);
+        setupGeneChangeListener(geneToCellData, cellClusterData, umapData);
         cellTypeTable(top100GenesPerClusterData);
 
         // Re-initialize radio buttons for the new sample
@@ -205,144 +393,6 @@ function plotData(umapData, cellClusterData, expressionData) {
     console.log("Traces before plotting:", Plotly.d3.select('#umap-plot').selectAll('.trace').data());
     Plotly.newPlot('umap-plot', allTraces, layout);
     console.log("Traces before plotting:", Plotly.d3.select('#umap-plot').selectAll('.trace').data());
-}
-
-function topNGenesPerClusterTable(top100GenesPerClusterData, cellClusterData) {
-    const clusterSelect = document.getElementById('cluster-select');
-
-    let clusterCellCount = {}
-    for (let key in cellClusterData) {
-        let value = cellClusterData[key]
-        clusterCellCount[value] = (clusterCellCount[value] || 0) + 1;
-    }
-        
-    clusterSelect.innerHTML = `<option value="">Select Cluster</option>` + 
-        Object.keys(top100GenesPerClusterData)
-        .map(cluster => `<option value="${cluster}">Cluster ${cluster}</option>`)
-        .join('');
-
-    // Handle cluster selection change
-    clusterSelect.addEventListener('change', function() {
-        const selectedCluster = this.value;
-
-        // Display cluster information
-        const cellNumDisplay = document.getElementById('cluster-cellnum-info');
-        if (selectedCluster) {
-            cellNumDisplay.innerText = `Number of cells in cluster: ${clusterCellCount[selectedCluster]}`;
-        } else {
-            cellNumDisplay.innerText = 'Cluster: Not found';
-        }
-
-        const tableBody = document.querySelector('#cluster-table tbody');
-        tableBody.innerHTML = ''; // Clear previous rows
-
-        if (selectedCluster) {
-            const genes = top100GenesPerClusterData[selectedCluster];
-            genes.forEach((gene, index) => {
-                const row = document.createElement('tr');
-                row.innerHTML = `
-                    <td>${index + 1}</td>
-                    <td>${gene.gene_name}</td>
-                    <td>${gene.score.toFixed(2)}</td>
-                    <td>${gene.log2_FC.toFixed(2)}</td>
-                    <td>${(gene.pct1 * 100).toFixed(2)}%</td>
-                    <td>${(gene.pct2 * 100).toFixed(2)}%</td>
-                    <td>${gene.pval_adj}</td>
-                `;
-                tableBody.appendChild(row);
-            });
-        }
-    });
-}
-
-function cellToGeneTable(cellToGeneData, cellClusterData) {
-    // Function to handle cell ID input
-    document.getElementById('cell-id-input').addEventListener('change', function() {
-        const cellId = this.value;
-        const genes = cellToGeneData[cellId];
-        const clusterInfo = cellClusterData[cellId];
-
-        // Clear previous table rows
-        const tbody = document.querySelector('#cell-table tbody');
-        tbody.innerHTML = '';
-
-        // Display cluster information
-        const clusterDisplay = document.getElementById('cell-cluster-info');
-        if (clusterInfo) {
-            clusterDisplay.innerText = `Cluster: ${clusterInfo}`;
-        } else {
-            clusterDisplay.innerText = 'Cluster: Not found';
-        }
-
-        // Populate gene expression table if the cell is found
-        if (genes) {
-            let index = 1;  // Initialize a 1-based index
-            Object.entries(genes).forEach(([geneName, relativeExpression]) => {
-                const row = tbody.insertRow();
-                row.insertCell(0).innerText = index;  // Use index for gene ranking
-                row.insertCell(1).innerText = geneName;
-                row.insertCell(2).innerText = relativeExpression;
-                index++;  // Increment index for each gene
-            });
-        } else {
-            // alert('Cell ID not found.');
-        }
-    });
-}
-
-function geneToCellTable(geneToCellData, cellClusterData, umapData) {
-    // Event listener for the submit button
-    document.getElementById('gene-input').addEventListener('change', function() {
-        const geneInput = document.getElementById('gene-input').value.trim().toUpperCase();
-        if (geneInput) {
-            const tableBody = document.querySelector('#gene-table tbody');
-            tableBody.innerHTML = ''; // Clear the previous rows
-
-            if (geneToCellData.hasOwnProperty(geneInput)) {
-                const cells = geneToCellData[geneInput];
-                
-                for (const [rank, [cellId, cluster, expressionValue]] of Object.entries(cells)) {
-                    const row = document.createElement('tr');
-                    
-                    const rankCell = document.createElement('td');
-                    rankCell.textContent = Number(rank) + 1
-
-                    const cellIdCell = document.createElement('td');
-                    cellIdCell.textContent = cellId;
-
-                    const clusterCell = document.createElement('td');
-                    clusterCell.textContent = cluster;
-                    
-                    const expressionCell = document.createElement('td');
-                    expressionCell.textContent = expressionValue
-                    
-                    row.appendChild(rankCell);
-                    row.appendChild(cellIdCell);
-                    row.appendChild(clusterCell);
-                    row.appendChild(expressionCell);
-                    
-                    tableBody.appendChild(row);
-                }
-
-                const expressionData = cells.reduce((dict, cell) => {
-                    dict[cell[0]] = cell[2]; // Dict of cellId: ExpressionValue
-                    return dict;
-                }, {});
-
-                // Make a second plot, using the cells and their expression as input
-                plotData(umapData, cellClusterData, expressionData)
-                geneSelected = true;
-            } else {
-                // Display message if gene not found
-                const row = document.createElement('tr');
-                const noDataCell = document.createElement('td');
-                noDataCell.colSpan = 4;
-                noDataCell.textContent = 'Gene not found';
-                row.appendChild(noDataCell);
-                tableBody.appendChild(row);
-            }
-        }
-    });
 }
 
 function cellTypeSection(top100GenesPerClusterData) {
@@ -546,6 +596,11 @@ let radioChangeHandler;
 function radioButtons(umapData, cellClusterData) {
     // Get all the radio buttons with name 'table-select'
     const radioButtons = document.querySelectorAll('input[name="Table Select"]');
+
+    // Remove old event listeners if they exist
+    if (radioChangeHandler) {
+        radioButtons.forEach(radio => radio.removeEventListener('change', radioChangeHandler));
+    }
 
     // Function to hide all tables
     function hideAllTables() {
