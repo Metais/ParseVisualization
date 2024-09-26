@@ -204,9 +204,10 @@ function topNGenesPerClusterTable(top100GenesPerClusterData, cellClusterData) {
 
         if (selectedCluster) {
             const genes = top100GenesPerClusterData[selectedCluster];
-            genes.forEach(gene => {
+            genes.forEach((gene, index) => {
                 const row = document.createElement('tr');
                 row.innerHTML = `
+                    <td>${index + 1}</td>
                     <td>${gene.gene_name}</td>
                     <td>${gene.score.toFixed(2)}</td>
                     <td>${gene.log2_FC.toFixed(2)}</td>
