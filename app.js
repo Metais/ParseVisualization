@@ -27,18 +27,19 @@ const cellTypesWithMarkers = {
 };
 
 var geneSelected = false;
-var umapDataVar = '';
-var cellClusterDataVar = '';
 
-async function loadData() {
+// Actually calling the function for this sample here -- change later for multiple samples?
+callThisSample('1');
+
+async function loadData(sample) {
     try {
         const [response1, response2, response3, response4, response5, response6] = await Promise.all([
-            fetch('data/umap_cluster.json'),
-            fetch('data/cell_cluster_mapping_sample1.json'),
-            fetch('data/gene_baseline_expr_sample1.json'),
-            fetch('data/top_100_genes_per_cluster_sample_1.json'),
-            fetch('data/cell_gene_expression.json'),
-            fetch('data/gene_cell_expression.json')
+            fetch(`data/umap/umap_${sample}.json`),
+            fetch(`data/cell_cluster_mapping/cell_cluster_mapping_sample${sample}.json`),
+            fetch(`data/gene_baseline_expr/gene_baseline_expr_sample${sample}.json`),
+            fetch(`data/top_100_genes_per_cluster/top_100_genes_per_cluster_sample_${sample}.json`),
+            fetch(`data/cell_gene_expression/cell_gene_expression_${sample}.json`),
+            fetch(`data/gene_cell_expression/gene_cell_expression_${sample}.json`)
         ]);
 
         const umapData = await response1.json();
@@ -488,25 +489,36 @@ function populateMarkerTable() {
 }
 
 
-
-loadData().then(({ umapData, cellClusterData, geneBaselineData, top100GenesPerClusterData, cellToGeneData, geneToCellData }) => {
-    plotData(umapData, cellClusterData, []);
-
-    topNGenesPerClusterTable(top100GenesPerClusterData, cellClusterData);
+function callThisSample(sample) {
+    loadData(sample).then(({ umapData, cellClusterData, geneBaselineData, top100GenesPerClusterData, cellToGeneData, geneToCellData }) => {
+        plotData(umapData, cellClusterData, []);
     
-    cellToGeneTable(cellToGeneData, cellClusterData);
+        topNGenesPerClusterTable(top100GenesPerClusterData, cellClusterData);
+        
+        cellToGeneTable(cellToGeneData, cellClusterData);
+    
+        geneToCellTable(geneToCellData, cellClusterData, umapData);
+    
+        cellTypeTable(top100GenesPerClusterData);
 
-    geneToCellTable(geneToCellData, cellClusterData, umapData);
+        radioButtons(umapData, cellClusterData);
+    
+        document.getElementById("umap-plot").style.display = "block";
+        document.getElementById("loading").style.display = "none";
+    });
+}
 
-    cellTypeTable(top100GenesPerClusterData);
+// Sample select change
+const selectElement = document.getElementById('sample-select');
+selectElement.addEventListener('change', function() {
+    document.getElementById('header-text').textContent = `Parse PBMCs Experiment: Sample ${selectElement.value}`;
+    document.getElementById("umap-plot").style.display = "none";
+    document.getElementById("loading").style.display = "block";
+    callThisSample(selectElement.value);
+})
 
-    document.getElementById("loading").remove();
-
-    umapDataVar = umapData;
-    cellClusterDataVar = cellClusterData;
-});
-
-document.addEventListener('DOMContentLoaded', function() {
+let radioChangeHandler;
+function radioButtons(umapData, cellClusterData) {
     // Get all the radio buttons with name 'table-select'
     const radioButtons = document.querySelectorAll('input[name="Table Select"]');
 
@@ -517,22 +529,32 @@ document.addEventListener('DOMContentLoaded', function() {
         });
     }
 
-    // Add an event listener to each radio button
-    radioButtons.forEach(radio => {
-        radio.addEventListener('change', function() {
-            hideAllTables();
-            const selectedTable = this.value;
-            document.getElementById(selectedTable).classList.add('active');
-
-            // If a gene is highlighted in the plot and the table changes, go back to normal
-            if (geneSelected) {
-                plotData(umapDataVar, cellClusterDataVar, []);
-                geneSelected = false;
-            }
+    // Remove existing event listeners if any
+    if (radioChangeHandler) {
+        radioButtons.forEach(radio => {
+            radio.removeEventListener('change', radioChangeHandler);
         });
+    }
+
+    // Create a new change handler function
+    radioChangeHandler = function() {
+        hideAllTables();
+        const selectedTable = this.value;
+        document.getElementById(selectedTable).classList.add('active');
+
+        // Reset plot logic if necessary
+        if (geneSelected && selectedTable !== 'gene-table-container') {
+            plotData(umapData, cellClusterData, []); // Reset to the original plot only if needed
+            geneSelected = false;
+        }
+    };
+
+    // Add the new event listener
+    radioButtons.forEach(radio => {
+        radio.addEventListener('change', radioChangeHandler);
     });
 
     // Initialize with the first table visible
     hideAllTables();
     document.getElementById('cluster-table-container').classList.add('active');
-});
+}
