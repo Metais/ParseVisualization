@@ -7,7 +7,7 @@ const cellTypesWithMarkers = {
     "CD4 Memory": ["CD27", "CD44", "IL7R", "TCF7", "BCL2", "LEF1", "CCR7", "TRAT1"],
     "CD8 Memory": ["KLRG1", "CX3CR1"],
     "CD8 Naive": ["SELL", "IL2RA", "CCR7", "CD8A", "CD8B", "GNLY"],
-    "NK": ["GNLY", "NKG7"],
+    "NK": ["GNLY", "NKG7", "NCR1", "GRIK4"],
     "CD16 Mono": ["FCGR3A", "MS4A7"],
     "B Naive": ["MS4A1", "SIGLEC2", "CD40", "CXCR5"],
     "T reg": ["FOXP3", "IL2RA", "CTLA4", "CCR4", "CCR6", "GATA3"],
@@ -28,8 +28,42 @@ const cellTypesWithMarkers = {
 
 var geneSelected = false;
 
+// Global variables for loaded data, set to null initially
+let umapData = null, cellClusterData = null, geneBaselineData = null, 
+top100GenesPerClusterData = null, cellToGeneData = null, geneToCellData = null;
+
 // Actually calling the function for this sample here -- change later for multiple samples?
 callThisSample('1');
+
+// Function to reset data variables
+function resetData() {
+    umapData = null;
+    cellClusterData = null;
+    geneBaselineData = null;
+    top100GenesPerClusterData = null;
+    cellToGeneData = null;
+    geneToCellData = null;
+}
+
+// Modified callThisSample to reset previous data before loading new sample
+function callThisSample(sample) {
+    resetData();  // Clear old data
+    loadData(sample).then((data) => {
+        ({ umapData, cellClusterData, geneBaselineData, top100GenesPerClusterData, cellToGeneData, geneToCellData } = data);
+
+        plotData(umapData, cellClusterData, []);
+        topNGenesPerClusterTable(top100GenesPerClusterData, cellClusterData);
+        cellToGeneTable(cellToGeneData, cellClusterData);
+        geneToCellTable(geneToCellData, cellClusterData, umapData);
+        cellTypeTable(top100GenesPerClusterData);
+
+        // Re-initialize radio buttons for the new sample
+        radioButtons(umapData, cellClusterData);
+
+        document.getElementById("umap-plot").style.display = "block";
+        document.getElementById("loading").style.display = "none";
+    });
+}
 
 async function loadData(sample) {
     try {
@@ -430,29 +464,34 @@ function clusterCellTypeSection(top100GenesPerClusterData) {
 
 // Populate the main cell type table based on the input from the marker editing table
 function cellTypeTable(top100GenesPerClusterData) {
+    // Function to hide all tables
+    function hideAllTables() {
+        document.querySelectorAll('.table-container').forEach(table => {
+            table.classList.remove('active');
+        });
+    }
+
     // Switch between the marker editing table and the main cell type table
     document.getElementById('from-input-next-btn').addEventListener('click', () => {
-        document.getElementById('marker-container').style.display = 'none';
-        document.getElementById('celltype-container').style.display = 'block';
-
+        hideAllTables();
+        document.getElementById('celltype-container').classList.add('active');
         cellTypeSection(top100GenesPerClusterData); // Call this with the actual data
     });
 
     document.getElementById('from-celltype-back-btn').addEventListener('click', () => {
-        document.getElementById('celltype-container').style.display = 'none';
-        document.getElementById('marker-container').style.display = 'block';
+        hideAllTables();
+        document.getElementById('marker-container').classList.add('active');
     });
 
     document.getElementById('from-celltype-next-btn').addEventListener('click', () => {
-        document.getElementById('celltype-container').style.display = 'none';
-        document.getElementById('cluster-celltype-container').style.display = 'block';
-
+        hideAllTables();
+        document.getElementById('cluster-celltype-container').classList.add('active');
         clusterCellTypeSection(top100GenesPerClusterData);
     });
 
     document.getElementById('from-cluster-back-btn').addEventListener('click', () => {
-        document.getElementById('celltype-container').style.display = 'block';
-        document.getElementById('cluster-celltype-container').style.display = 'none';
+        hideAllTables();
+        document.getElementById('celltype-container').classList.add('active');
     });
 
     // Initial population of marker table
@@ -470,7 +509,7 @@ function findMarkerGeneInClusters(markerGene, top100GenesPerClusterData) {
                 clustersWithGene.push({
                     cluster: geneInfo.cluster,
                     score: geneInfo.score,
-                    geneRankInCluster: geneRank,
+                    geneRankInCluster: geneRank + 1,
                     pval_adj: geneInfo.pval_adj
                 });
             }
@@ -494,26 +533,6 @@ function populateMarkerTable() {
     });
 }
 
-
-function callThisSample(sample) {
-    loadData(sample).then(({ umapData, cellClusterData, geneBaselineData, top100GenesPerClusterData, cellToGeneData, geneToCellData }) => {
-        plotData(umapData, cellClusterData, []);
-    
-        topNGenesPerClusterTable(top100GenesPerClusterData, cellClusterData);
-        
-        cellToGeneTable(cellToGeneData, cellClusterData);
-    
-        geneToCellTable(geneToCellData, cellClusterData, umapData);
-    
-        cellTypeTable(top100GenesPerClusterData);
-
-        radioButtons(umapData, cellClusterData);
-    
-        document.getElementById("umap-plot").style.display = "block";
-        document.getElementById("loading").style.display = "none";
-    });
-}
-
 // Sample select change
 const selectElement = document.getElementById('sample-select');
 selectElement.addEventListener('change', function() {
@@ -532,13 +551,6 @@ function radioButtons(umapData, cellClusterData) {
     function hideAllTables() {
         document.querySelectorAll('.table-container').forEach(table => {
             table.classList.remove('active');
-        });
-
-        subtablesToRemove = ['celltype-container', 'marker-container', 'cluster-celltype-container'];
-        subtablesToRemove.forEach(subtable => {
-            if (document.getElementById(subtable).style.display === 'block') {
-                document.getElementById(subtable).style.display = 'none';
-            }
         });
     }
 
