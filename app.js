@@ -339,6 +339,7 @@ function cellTypeSection(top100GenesPerClusterData) {
                     <td>${markerGene}</td>
                     <td>Not found</td>
                     <td>-1</td>
+                    <td>-1</td>
                     <td>Not found</td>
                 `;
                 tableBody.appendChild(row);
@@ -358,6 +359,7 @@ function cellTypeSection(top100GenesPerClusterData) {
                         <td>${markerGene}</td>
                         <td>${clusterInfo.cluster}</td>
                         <td>${clusterInfo.score.toFixed(2)}</td>
+                        <td>${clusterInfo.geneRankInCluster}</td>
                         <td>${clusterInfo.pval_adj}</td>
                     `;
                     tableBody.appendChild(row);
@@ -400,6 +402,7 @@ function clusterCellTypeSection(top100GenesPerClusterData) {
                         cellType,
                         markerGene,
                         score: clusterInfo.score,
+                        geneRankInCluster: clusterInfo.geneRankInCluster,
                         pval_adj: clusterInfo.pval_adj
                     });
                 });
@@ -416,6 +419,7 @@ function clusterCellTypeSection(top100GenesPerClusterData) {
                 <td>${data.cellType}</td>
                 <td>${data.markerGene}</td>
                 <td>${data.score.toFixed(2)}</td>
+                <td>${data.geneRankInCluster}</td>
                 <td>${data.pval_adj}</td>
             `;
             tableBody.appendChild(row);
@@ -460,12 +464,13 @@ function findMarkerGeneInClusters(markerGene, top100GenesPerClusterData) {
     const clustersWithGene = [];
 
     Object.values(top100GenesPerClusterData).forEach(clusterGenes => {
-        clusterGenes.forEach(geneInfo => {
+        clusterGenes.forEach((geneInfo, geneRank) => {
             if (geneInfo.gene_name === markerGene) {
                 anyFound = true;
                 clustersWithGene.push({
                     cluster: geneInfo.cluster,
                     score: geneInfo.score,
+                    geneRankInCluster: geneRank,
                     pval_adj: geneInfo.pval_adj
                 });
             }
@@ -527,6 +532,13 @@ function radioButtons(umapData, cellClusterData) {
     function hideAllTables() {
         document.querySelectorAll('.table-container').forEach(table => {
             table.classList.remove('active');
+        });
+
+        subtablesToRemove = ['celltype-container', 'marker-container', 'cluster-celltype-container'];
+        subtablesToRemove.forEach(subtable => {
+            if (document.getElementById(subtable).style.display === 'block') {
+                document.getElementById(subtable).style.display = 'none';
+            }
         });
     }
 
