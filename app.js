@@ -6,11 +6,11 @@ const cellTypesWithMarkers = {
     "CD4 Naive": ["SELL", "IL2RA", "CCR7", "CD4"],  // CD4 naive vs CD8 naive have near-identical expr profiles, look at these specific ones
     "CD4 Memory": ["CD27", "CD44", "IL7R", "TCF7", "BCL2", "LEF1", "CCR7", "TRAT1"],
     "CD8 Memory": ["KLRG1", "CX3CR1"],
-    "CD8 Naive": ["SELL", "IL2RA", "CCR7", "CD8A", "CD8B", "GNLY"],
+    "CD8 Naive": ["NRCAM", "SELL", "IL2RA", "CCR7", "CD8A", "CD8B", "GNLY"],
     "NK": ["GNLY", "NKG7", "NCR1", "GRIK4"],
     "CD16 Mono": ["FCGR3A", "MS4A7"],
     "B Naive": ["MS4A1", "SIGLEC2", "CD40", "CXCR5"],
-    "T reg": ["FOXP3", "IL2RA", "CTLA4", "CCR4", "CCR6", "GATA3"],
+    "T reg": ["FOXP3", "RTKN2", "IL2RA", "CTLA4", "CCR4", "CCR6", "GATA3"],
     "NKT": ["CD3D", "TRAV1-2", "KLRB1"],
     "cDC2": ["CD1C"],
     "B Intermediate": ["CD19", "CD27", "MS4A1"],
@@ -21,7 +21,7 @@ const cellTypesWithMarkers = {
     "pDC": ["LILRA4", "IL3RA", "CLEC4C"],
     "Proliferating": ["MKI67"],
     "HSPC": ["CD34"],
-    "Plasmablast": ["PRDM1", "XBP1", "MZB1"],
+    "Plasmablast": ["PRDM1", "XBP1", "MZB1", "JCHAIN", "IGKV3-20"],
     "cDC1": ["CLEC9A"],
     "ILC": ["KIT", "KLRB1", "IL7R"]
 };
