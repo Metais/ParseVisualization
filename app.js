@@ -59,7 +59,7 @@ function removeClusterSelectListener() {
 function removeCellIdChangeListener() {
     const cellIdInput = document.getElementById('cell-id-input');
     if (cellIdChangeListener) {
-        cellIdInput.removeEventListener('change', cellIdChangeListener);
+        cellIdInput.removeEventListener('keyup', cellIdChangeListener);
         cellIdChangeListener = null;
     }
 }
@@ -68,7 +68,7 @@ function removeGeneChangeListener() {
     // Remove previous gene input listener
     const geneInput = document.getElementById('gene-input');
     if (geneInputChangeListener) {
-        geneInput.removeEventListener('change', geneInputChangeListener);
+        geneInput.removeEventListener('keyup', geneInputChangeListener);
         geneInputChangeListener = null;
     }
 }
@@ -140,96 +140,100 @@ function topNGenesPerClusterTable(top100GenesPerClusterData, cellClusterData) {
 function setupCellIdChangeListener(cellToGeneData, cellClusterData) {
     removeCellIdChangeListener();
 
-    cellIdChangeListener = function() {
-        const cellId = this.value;
-        const genes = cellToGeneData[cellId];
-        const clusterInfo = cellClusterData[cellId];
-
-        // Clear previous table rows
-        const tbody = document.querySelector('#cell-table tbody');
-        tbody.innerHTML = '';
-
-        // Display cluster information
-        const clusterDisplay = document.getElementById('cell-cluster-info');
-        if (clusterInfo) {
-            clusterDisplay.innerText = `Cluster: ${clusterInfo}`;
-        } else {
-            clusterDisplay.innerText = 'Cluster: Not found';
-        }
-
-        // Populate gene expression table if the cell is found
-        if (genes) {
-            let index = 1;  // Initialize a 1-based index
-            Object.entries(genes).forEach(([geneName, relativeExpression]) => {
-                const row = tbody.insertRow();
-                row.insertCell(0).innerText = index;  // Use index for gene ranking
-                row.insertCell(1).innerText = geneName;
-                row.insertCell(2).innerText = relativeExpression;
-                index++;  // Increment index for each gene
-            });
-        } else {
-            // alert('Cell ID not found.');
+    cellIdChangeListener = function(event) {
+        if (event.key === "Enter") {
+            const cellId = this.value;
+            const genes = cellToGeneData[cellId];
+            const clusterInfo = cellClusterData[cellId];
+    
+            // Clear previous table rows
+            const tbody = document.querySelector('#cell-table tbody');
+            tbody.innerHTML = '';
+    
+            // Display cluster information
+            const clusterDisplay = document.getElementById('cell-cluster-info');
+            if (clusterInfo) {
+                clusterDisplay.innerText = `Cluster: ${clusterInfo}`;
+            } else {
+                clusterDisplay.innerText = 'Cluster: Not found';
+            }
+    
+            // Populate gene expression table if the cell is found
+            if (genes) {
+                let index = 1;  // Initialize a 1-based index
+                Object.entries(genes).forEach(([geneName, relativeExpression]) => {
+                    const row = tbody.insertRow();
+                    row.insertCell(0).innerText = index;  // Use index for gene ranking
+                    row.insertCell(1).innerText = geneName;
+                    row.insertCell(2).innerText = relativeExpression;
+                    index++;  // Increment index for each gene
+                });
+            } else {
+                // alert('Cell ID not found.');
+            }
         }
     };
 
-    document.getElementById('cell-id-input').addEventListener('change', cellIdChangeListener);
+    document.getElementById('cell-id-input').addEventListener('keyup', cellIdChangeListener);
 }
 
 function setupGeneChangeListener(geneToCellData, cellClusterData, umapData) {
     removeGeneChangeListener();
 
-    geneInputChangeListener = function () {
-        const geneInput = document.getElementById('gene-input').value.trim().toUpperCase();
-        if (geneInput) {
-            const tableBody = document.querySelector('#gene-table tbody');
-            tableBody.innerHTML = ''; // Clear the previous rows
-
-            if (geneToCellData.hasOwnProperty(geneInput)) {
-                const cells = geneToCellData[geneInput];
-                
-                for (const [rank, [cellId, cluster, expressionValue]] of Object.entries(cells)) {
+    geneInputChangeListener = function (event) {
+        if (event.key === "Enter") {
+            const geneInput = document.getElementById('gene-input').value.trim().toUpperCase();
+            if (geneInput) {
+                const tableBody = document.querySelector('#gene-table tbody');
+                tableBody.innerHTML = ''; // Clear the previous rows
+    
+                if (geneToCellData.hasOwnProperty(geneInput)) {
+                    const cells = geneToCellData[geneInput];
+                    
+                    for (const [rank, [cellId, cluster, expressionValue]] of Object.entries(cells)) {
+                        const row = document.createElement('tr');
+                        
+                        const rankCell = document.createElement('td');
+                        rankCell.textContent = Number(rank) + 1
+    
+                        const cellIdCell = document.createElement('td');
+                        cellIdCell.textContent = cellId;
+    
+                        const clusterCell = document.createElement('td');
+                        clusterCell.textContent = cluster;
+                        
+                        const expressionCell = document.createElement('td');
+                        expressionCell.textContent = expressionValue
+                        
+                        row.appendChild(rankCell);
+                        row.appendChild(cellIdCell);
+                        row.appendChild(clusterCell);
+                        row.appendChild(expressionCell);
+                        
+                        tableBody.appendChild(row);
+                    }
+    
+                    const expressionData = cells.reduce((dict, cell) => {
+                        dict[cell[0]] = cell[2]; // Dict of cellId: ExpressionValue
+                        return dict;
+                    }, {});
+    
+                    // Make a second plot, using the cells and their expression as input
+                    plotData(umapData, cellClusterData, expressionData)
+                    geneSelected = true;
+                } else {
+                    // Display message if gene not found
                     const row = document.createElement('tr');
-                    
-                    const rankCell = document.createElement('td');
-                    rankCell.textContent = Number(rank) + 1
-
-                    const cellIdCell = document.createElement('td');
-                    cellIdCell.textContent = cellId;
-
-                    const clusterCell = document.createElement('td');
-                    clusterCell.textContent = cluster;
-                    
-                    const expressionCell = document.createElement('td');
-                    expressionCell.textContent = expressionValue
-                    
-                    row.appendChild(rankCell);
-                    row.appendChild(cellIdCell);
-                    row.appendChild(clusterCell);
-                    row.appendChild(expressionCell);
-                    
+                    const noDataCell = document.createElement('td');
+                    noDataCell.colSpan = 4;
+                    noDataCell.textContent = 'Gene not found';
+                    row.appendChild(noDataCell);
                     tableBody.appendChild(row);
                 }
-
-                const expressionData = cells.reduce((dict, cell) => {
-                    dict[cell[0]] = cell[2]; // Dict of cellId: ExpressionValue
-                    return dict;
-                }, {});
-
-                // Make a second plot, using the cells and their expression as input
-                plotData(umapData, cellClusterData, expressionData)
-                geneSelected = true;
-            } else {
-                // Display message if gene not found
-                const row = document.createElement('tr');
-                const noDataCell = document.createElement('td');
-                noDataCell.colSpan = 4;
-                noDataCell.textContent = 'Gene not found';
-                row.appendChild(noDataCell);
-                tableBody.appendChild(row);
             }
         }
     };
-    document.getElementById('gene-input').addEventListener('change', geneInputChangeListener);
+    document.getElementById('gene-input').addEventListener('keyup', geneInputChangeListener);
 }
 
 // Modified callThisSample to reset previous data before loading new sample
@@ -589,6 +593,11 @@ selectElement.addEventListener('change', function() {
     document.getElementById('header-text').textContent = `Parse PBMCs Experiment: Sample ${selectElement.value}`;
     document.getElementById("umap-plot").style.display = "none";
     document.getElementById("loading").style.display = "block";
+    document.querySelectorAll('.table-container').forEach(table => {
+        table.classList.remove('active');
+    });
+    document.getElementById('cluster-button').checked = true;
+
     callThisSample(selectElement.value);
 })
 
