@@ -4,7 +4,7 @@ const handleError = (error) => console.error('Error:', error);
 const cellTypesWithMarkers = {
     "CD14 Mono": ["CD14", "VCAN", "CCR2", "TLR4", "TREM1", "NLRP3", "NLRP12", "CD36", "SIGLEC1", "OLR1", "SIRPA", "CD163"],
     "CD4 Naive": ["SELL", "IL2RA", "CCR7", "CD4"],  // CD4 naive vs CD8 naive have near-identical expr profiles, look at these specific ones
-    "CD4 Memory": ["CD27", "CD44", "IL7R", "TCF7", "BCL2", "LEF1", "CCR7", "TRAT1"],
+    "CD4 Memory": ["CD27", "CD44", "IL7R", "TCF7", "BCL2", "LEF1", "CCR7", "TRAT1", "RORA"],
     "CD8 Memory": ["KLRG1", "CX3CR1"],
     "CD8 Naive": ["NRCAM", "SELL", "IL2RA", "CCR7", "CD8A", "CD8B", "GNLY"],
     "NK": ["GNLY", "NKG7", "NCR1", "GRIK4"],
