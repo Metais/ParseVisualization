@@ -27,6 +27,7 @@ const cellTypesWithMarkers = {
 };
 
 var geneSelected = false;
+var currentSample = '1';
 
 // Global variables for loaded data, set to null initially
 let umapData = null, cellClusterData = null, geneBaselineData = null, 
@@ -35,7 +36,7 @@ top100GenesPerClusterData = null, cellToGeneData = null, geneToCellData = null;
 let clusterSelectChangeListener = null, cellIdChangeListener = null, geneInputChangeListener = null;
 
 // Actually calling the function for this sample here -- change later for multiple samples?
-callThisSample('1');
+callThisSample(currentSample);
 
 // Function to reset data variables
 function resetData() {
@@ -238,6 +239,7 @@ function setupGeneChangeListener(geneToCellData, cellClusterData, umapData) {
 
 // Modified callThisSample to reset previous data before loading new sample
 function callThisSample(sample) {
+    currentSample = sample;
     resetData();  // Clear old data
     loadData(sample).then((data) => {
         ({ umapData, cellClusterData, geneBaselineData, top100GenesPerClusterData, cellToGeneData, geneToCellData } = data);
@@ -285,8 +287,6 @@ function plotData(umapData, cellClusterData, expressionData) {
     // Clear any previous traces
     Plotly.purge('umap-plot');  // Remove all previous traces and clear the plot area
 
-    const currentTraces = Plotly.d3.select('#umap-plot').selectAll('.trace');
-
     let clusters = [];
     let cellId = [];
     const hasExpressionData = Object.keys(expressionData).length > 0;
@@ -317,14 +317,26 @@ function plotData(umapData, cellClusterData, expressionData) {
 
     // Prepare traces for each cluster (background cells)
     const backgroundTraces = uniqueClusters.map(cluster => {
-        const traceData = cellId
-            .filter(id => clusters[id] === cluster)  // Match cells to the current cluster
-            .map(id => ({
-                x: umapData[id].UMAP1,
-                y: umapData[id].UMAP2,
-                text: `Cluster: ${clusters[id]}\nCell Id: ${id}`,
-                expression: expressionData[id] || 0  // Include expression data, default to 0 if missing
-            }));
+        if (currentSample === "Combined") {
+            var traceData = cellId
+                .filter(id => clusters[id/10] === cluster)  // Match cells to the current cluster
+                .map(id => ({
+                    x: umapData[id].UMAP1,
+                    y: umapData[id].UMAP2,
+                    text: `Cluster: ${clusters[id/10]}\nCell Id: ${id}`,
+                    expression: expressionData[id/10] || 0  // Include expression data, default to 0 if missing
+                }));
+        }
+        else {
+            var traceData = cellId
+                .filter(id => clusters[id] === cluster)  // Match cells to the current cluster
+                .map(id => ({
+                    x: umapData[id].UMAP1,
+                    y: umapData[id].UMAP2,
+                    text: `Cluster: ${clusters[id]}\nCell Id: ${id}`,
+                    expression: expressionData[id] || 0  // Include expression data, default to 0 if missing
+                }));
+        }
 
         return {
             x: traceData.map(d => d.x),
