@@ -27,7 +27,7 @@ const cellTypesWithMarkers = {
 };
 
 var geneSelected = false;
-var currentSample = '1';
+var currentSample = 'Combined';
 
 // Global variables for loaded data, set to null initially
 let umapData = null, cellClusterData = null, geneBaselineData = null, 
