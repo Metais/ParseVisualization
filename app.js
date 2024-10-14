@@ -9,14 +9,14 @@ const cellTypesWithMarkers = {
     "CD8 Naive": ["NRCAM", "SELL", "IL2RA", "CCR7", "CD8A", "CD8B", "GNLY"],
     "NK": ["GNLY", "NKG7", "NCR1", "GRIK4"],
     "CD16 Mono": ["FCGR3A", "MS4A7"],
-    "B Naive": ["MS4A1", "SIGLEC2", "CD40", "CXCR5"],
+    "B Naive": "CD19,IgD,CD38,CD24,CD20,MS4A1,PTPRC,PAX5,CD24,CD38,CD79A,JCHAIN,SSR4,FKBP11,SEC11C,DERL3,PRDX4,IGLL5,CD79B,TCL1A,IGLL5,HLA-DQA1,HLA-DQB1,CD138,CD38,VPREB3,IGLL5".split(','),
     "T reg": ["FOXP3", "RTKN2", "IL2RA", "CTLA4", "CCR4", "CCR6", "GATA3"],
     "NKT": ["CD3D", "TRAV1-2", "KLRB1"],
     "cDC2": ["CD1C"],
     "B Intermediate": ["CD19", "CD27", "MS4A1"],
     "NK CD56bright": ["NCAM1", "XCL1", "XCL2"],
     "MAIT": ["SLC4A10", "KLRB1", "TRAV1-2"],
-    "B Memory": ["MS4A1", "CD27", "CD38"],
+    "B Memory": "CD19,CD27,IgD,CD38,CD24,CD20,MS4A1,PTPRC,PAX5,CD24,CD38,CD79A,JCHAIN,SSR4,FKBP11,SEC11C,DERL3,PRDX4,IGLL5,CD79B,TCL1A,IGLL5,HLA-DQA1,HLA-DQB1,CD138,CD38,CD27,VPREB3,IGLL5".split(','),
     "Gamma Delta T": ["TRDC", "TRGC2"],
     "pDC": ["LILRA4", "IL3RA", "CLEC4C"],
     "Proliferating": ["MKI67"],
@@ -28,6 +28,11 @@ const cellTypesWithMarkers = {
 
 var geneSelected = false;
 var currentSample = 'Combined';
+// Constant data, no matter choice of sample
+var geneData = "";
+fetch('data/gene_data.json')
+    .then(x => x.json())
+    .then(data => geneData = data);
 
 // Global variables for loaded data, set to null initially
 let umapData = null, cellClusterData = null, geneBaselineData = null, 
@@ -99,9 +104,18 @@ function setupClusterSelectListener(top100GenesPerClusterData, clusterCellCount)
             const genes = top100GenesPerClusterData[selectedCluster];
             genes.forEach((gene, index) => {
                 const row = document.createElement('tr');
+                const gene_info = geneData[gene.gene_name];
+                let gene_group = "Unknown";
+                let gene_loc = "Unknown";
+                if (gene_info) {
+                    gene_group = gene_info[1] === null ? "Unknown" : gene_info[1];
+                    gene_loc = gene_info[0] === null ? "Unknown" : gene_info[0];
+                }
                 row.innerHTML = `
                     <td>${index + 1}</td>
                     <td>${gene.gene_name}</td>
+                    <td>${gene_group}</td>
+                    <td>${gene_loc}</td>
                     <td>${gene.score.toFixed(2)}</td>
                     <td>${gene.log2_FC.toFixed(2)}</td>
                     <td>${(gene.pct1 * 100).toFixed(2)}%</td>
@@ -164,9 +178,18 @@ function setupCellIdChangeListener(cellToGeneData, cellClusterData) {
                 let index = 1;  // Initialize a 1-based index
                 Object.entries(genes).forEach(([geneName, relativeExpression]) => {
                     const row = tbody.insertRow();
+                    const gene_info = geneData[geneName];
+                    let gene_group = "Unknown";
+                    let gene_loc = "Unknown";
+                    if (gene_info) {
+                        gene_group = gene_info[1] === null ? "Unknown" : gene_info[1];
+                        gene_loc = gene_info[0] === null ? "Unknown" : gene_info[0];
+                    }
                     row.insertCell(0).innerText = index;  // Use index for gene ranking
                     row.insertCell(1).innerText = geneName;
-                    row.insertCell(2).innerText = relativeExpression;
+                    row.insertCell(2).innerText = gene_group;
+                    row.insertCell(3).innerText = gene_loc;
+                    row.insertCell(4).innerText = relativeExpression;
                     index++;  // Increment index for each gene
                 });
             } else {
