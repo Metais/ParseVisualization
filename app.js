@@ -113,7 +113,7 @@ function setupClusterSelectListener(top100GenesPerClusterData, clusterCellCount)
                 }
                 row.innerHTML = `
                     <td>${index + 1}</td>
-                    <td>${gene.gene_name}</td>
+                    <td><a href="https://www.genecards.org/cgi-bin/carddisp.pl?gene=${gene.gene_name}" target="_blank">${gene.gene_name}</a></td>
                     <td>${gene_group}</td>
                     <td>${gene_loc}</td>
                     <td>${gene.score.toFixed(2)}</td>
